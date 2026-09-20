@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HEARTZ AND WAVES – Biomedical Telemetry Hub</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body { background-color: #080c14; color: #f8fafc; font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+        .glass { background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(14px); border: 1px solid rgba(255, 255, 255, 0.08); }
+        .pulse-glow { animation: pulseGlow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        @keyframes pulseGlow { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }
+    </style>
+</head>
+<body class="p-4 md:p-6 min-h-screen">
+
+    <header class="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4">
+        <div>
+            <div class="flex items-center gap-3">
+                <div class="p-2.5 bg-cyan-500/10 border border-cyan-500/30 rounded-xl text-cyan-400">
+                    <i data-lucide="activity" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h1 class="text-2xl md:text-3xl font-black tracking-tight text-white flex items-center gap-2">
+                        HEARTZ <span class="text-cyan-400">&amp;</span> WAVES
+                    </h1>
+                    <p class="text-slate-400 text-xs md:text-sm font-medium">Ultra-Low Power Edge AI Telemetry Platform (Python API: <span class="text-cyan-400">127.0.0.1:5000</span>)</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Interactive Scenario Profile Buttons -->
+        <div class="glass p-1.5 rounded-2xl flex flex-wrap gap-1.5 w-full lg:w-auto justify-start lg:justify-end">
+            <button onclick="changeProfile('healthy')" id="btn-healthy" class="px-3.5 py-2 rounded-xl text-xs font-bold uppercase transition bg-emerald-600 text-white shadow-lg shadow-emerald-900/30">Healthy</button>
+            <button onclick="changeProfile('asthma_attack')" id="btn-asthma" class="px-3.5 py-2 rounded-xl text-xs font-bold uppercase transition bg-slate-800 text-slate-400 hover:bg-slate-700">Asthma Attack</button>
+            <button onclick="changeProfile('dka_alert')" id="btn-dka" class="px-3.5 py-2 rounded-xl text-xs font-bold uppercase transition bg-slate-800 text-slate-400 hover:bg-slate-700">DKA Emergency</button>
+            <button onclick="changeProfile('cardiac_arrhythmia')" id="btn-cardiac" class="px-3.5 py-2 rounded-xl text-xs font-bold uppercase transition bg-slate-800 text-slate-400 hover:bg-slate-700">Cardiac Arrhythmia</button>
+        </div>
+    </header>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+        
+        <!-- KPI 1: Hand-Contact Lead-I ECG -->
+        <div class="glass p-4 rounded-2xl border-l-4 border-rose-500">
+            <div class="text-slate-400 text-xs font-bold flex justify-between items-center">
+                <span>HAND-CONTACT ECG (AD8232)</span> <i data-lucide="heart" class="w-4 h-4 text-rose-400"></i>
+            </div>
+            <div class="text-2xl font-black text-rose-400 mt-2"><span id="kpi-ecg-bpm">--</span> <span class="text-xs font-normal text-slate-400">BPM</span></div>
+            <div class="text-[11px] text-slate-300 font-semibold mt-1 truncate" id="kpi-ecg-status">Normal Sinus Rhythm</div>
+        </div>
+
+        <!-- KPI 2: Peak Expiratory Flow -->
+        <div class="glass p-4 rounded-2xl border-l-4 border-emerald-500">
+            <div class="text-slate-400 text-xs font-bold flex justify-between items-center">
+                <span>PEAK FLOW (MPX5010DP)</span> <i data-lucide="wind" class="w-4 h-4 text-emerald-400"></i>
+            </div>
+            <div class="text-2xl font-black text-emerald-400 mt-2"><span id="kpi-pef">--</span> <span class="text-xs font-normal text-slate-400">L/min</span></div>
+            <div class="text-[11px] text-slate-400 mt-1">Target: &gt; 350 L/min</div>
+        </div>
+
+        <!-- KPI 3: Lip Contact Temperature -->
+        <div class="glass p-4 rounded-2xl border-l-4 border-amber-500">
+            <div class="text-slate-400 text-xs font-bold flex justify-between items-center">
+                <span>LIP TEMP (NTC THERM)</span> <i data-lucide="thermometer" class="w-4 h-4 text-amber-400"></i>
+            </div>
+            <div class="text-2xl font-black text-amber-400 mt-2"><span id="kpi-temp">--</span> <span class="text-xs font-normal text-slate-400">°C</span></div>
+            <div class="text-[11px] text-slate-400 mt-1">Mouthpiece Contact Probe</div>
+        </div>
+
+        <!-- KPI 4: Power Savings -->
+        <div class="glass p-4 rounded-2xl border-l-4 border-indigo-500">
+            <div class="text-slate-400 text-xs font-bold flex justify-between items-center">
+                <span>POWER SAVINGS</span> <i data-lucide="zap" class="w-4 h-4 text-indigo-400"></i>
+            </div>
+            <div class="text-2xl font-black text-indigo-300 mt-2" id="kpi-power-saved">--%</div>
+            <div class="text-[11px] text-slate-400 mt-1">Active Draw: <span id="kpi-power-mw" class="text-slate-200 font-bold">300</span> mW</div>
+        </div>
+
+        <!-- KPI 5: AI Gatekeeper Clinical Diagnosis Banner -->
+        <div class="glass p-4 rounded-2xl border-l-4 border-emerald-500 transition-all duration-300 sm:col-span-2 lg:col-span-1" id="diagnosis-card">
+            <div class="text-slate-400 text-xs font-bold flex justify-between items-center">
+                <span>AI GATEKEEPER DIAGNOSIS</span> <i data-lucide="shield-check" class="w-4 h-4 text-emerald-400" id="diag-icon"></i>
+            </div>
+            <div class="text-lg font-extrabold text-emerald-400 mt-1.5 leading-tight" id="kpi-diagnosis">HEALTHY</div>
+            <div class="text-[10px] text-slate-400 mt-1 leading-snug" id="kpi-status-sub">Heavy acoustic &amp; gas sensors sleeping</div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- Live Chart Area (2 Columns) -->
+        <div class="lg:col-span-2 glass p-5 rounded-2xl flex flex-col justify-between">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-sm font-bold text-slate-200 flex items-center gap-2">
+                    <i data-lucide="line-chart" class="w-4 h-4 text-cyan-400"></i> Live Telemetry Waveform Stream (1 Hz)
+                </h2>
+                <span class="px-2.5 py-1 bg-cyan-500/10 border border-cyan-500/30 rounded-full text-[10px] font-bold text-cyan-400 flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-cyan-400 animate-ping"></span> STREAMING
+                </span>
+            </div>
+            <div class="h-80 w-full">
+                <canvas id="telemetryChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Hardware Sensor Power-Gating Panel (1 Column) -->
+        <div class="glass p-5 rounded-2xl flex flex-col justify-between gap-4">
+            <div>
+                <h2 class="text-sm font-bold mb-1 text-slate-200 flex items-center gap-2">
+                    <i data-lucide="cpu" class="w-4 h-4 text-indigo-400"></i> STM32 Dynamic Power-Gating Control
+                </h2>
+                <p class="text-xs text-slate-400 mb-4">High-power peripheral sensors stay in ultra-low power sleep (0mW) until primary gating criteria are breached.</p>
+
+                <div class="space-y-3">
+                    <!-- Sensor 1: Dual-Hand Lead-I ECG -->
+                    <div class="p-3 bg-slate-900/90 rounded-xl flex justify-between items-center border border-slate-800">
+                        <div>
+                            <p class="font-bold text-xs text-slate-200">AD8232 Hand-Contact ECG</p>
+                            <p class="text-[10px] text-slate-400">Triggers on dual-hand palm contact</p>
+                        </div>
+                        <span id="badge-ecg" class="px-2.5 py-1 bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 rounded-lg text-[10px] font-bold uppercase">ACTIVE (120mW)</span>
+                    </div>
+
+                    <!-- Sensor 2: Stethoscope Piezo Audio -->
+                    <div class="p-3 bg-slate-900/90 rounded-xl flex justify-between items-center border border-slate-800">
+                        <div>
+                            <p class="font-bold text-xs text-slate-200">MAX9814 Piezo Stethoscope</p>
+                            <p class="text-[10px] text-slate-400">Triggers if Peak Flow &lt; 300 L/min</p>
+                        </div>
+                        <span id="badge-acoustic" class="px-2.5 py-1 bg-slate-800 text-slate-500 rounded-lg text-[10px] font-bold uppercase">SLEEPING (0mW)</span>
+                    </div>
+
+                    <!-- Sensor 3: SGP30 Gas Chip -->
+                    <div class="p-3 bg-slate-900/90 rounded-xl flex justify-between items-center border border-slate-800">
+                        <div>
+                            <p class="font-bold text-xs text-slate-200">SGP30 Digital Acetone/eCO2</p>
+                            <p class="text-[10px] text-slate-400">Triggers if Lip Temp &gt; 38°C or SpO2 &lt; 93%</p>
+                        </div>
+                        <span id="badge-sgp30" class="px-2.5 py-1 bg-slate-800 text-slate-500 rounded-lg text-[10px] font-bold uppercase">SLEEPING (0mW)</span>
+                    </div>
+
+                    <!-- Sensor 4: MQ-138 Ketone Array -->
+                    <div class="p-3 bg-slate-900/90 rounded-xl flex justify-between items-center border border-slate-800">
+                        <div>
+                            <p class="font-bold text-xs text-slate-200">MQ-138 Ketone/Vapor Array</p>
+                            <p class="text-[10px] text-slate-400">Triggers if Fever &gt; 38°C &amp; GSR &gt; 400</p>
+                        </div>
+                        <span id="badge-mq138" class="px-2.5 py-1 bg-slate-800 text-slate-500 rounded-lg text-[10px] font-bold uppercase">SLEEPING (0mW)</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Raw Python Telemetry JSON Feed Window -->
+            <div class="p-3 bg-slate-950 rounded-xl border border-slate-900 font-mono text-[11px]">
+                <div class="text-slate-400 text-[10px] font-bold mb-1 flex justify-between">
+                    <span>RAW PYTHON TELEMETRY STREAM</span>
+                    <span id="stream-timestamp" class="text-cyan-400">--:--:--</span>
+                </div>
+                <pre id="json-display" class="text-emerald-400 whitespace-pre-wrap overflow-x-auto max-h-36">Connecting to Python API (http://127.0.0.1:5000)...</pre>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        lucide.createIcons();
+
+        // Chart.js Configuration
+        const ctx = document.getElementById('telemetryChart').getContext('2d');
+        const chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [
+                    { label: 'PEF (L/min)', data: [], borderColor: '#10b981', backgroundColor: 'rgba(16, 185, 129, 0.05)', tension: 0.35, yAxisID: 'y' },
+                    { label: 'SpO2 (%)', data: [], borderColor: '#06b6d4', tension: 0.35, yAxisID: 'y1' },
+                    { label: 'Lead-I ECG (BPM)', data: [], borderColor: '#f43f5e', tension: 0.35, yAxisID: 'y1' },
+                    { label: 'Lip Temp (°C)', data: [], borderColor: '#f59e0b', tension: 0.35, yAxisID: 'y2' }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: { ticks: { color: '#64748b' }, grid: { color: 'rgba(30, 41, 59, 0.5)' } },
+                    y: { type: 'linear', position: 'left', ticks: { color: '#10b981' }, grid: { color: 'rgba(30, 41, 59, 0.5)' }, min: 100, max: 600 },
+                    y1: { type: 'linear', position: 'right', ticks: { color: '#06b6d4' }, grid: { drawOnChartArea: false }, min: 50, max: 170 },
+                    y2: { type: 'linear', position: 'right', display: false, min: 34, max: 41 }
+                },
+                plugins: { legend: { labels: { color: '#94a3b8', font: { size: 11 } } } }
+            }
+        });
+
+        // Trigger Scenario Switch on Python Server
+        async function changeProfile(profileName) {
+            try {
+                await fetch('http://127.0.0.1:5000/api/set_profile', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ profile: profileName })
+                });
+
+                const profileButtons = {
+                    'healthy': 'btn-healthy',
+                    'asthma_attack': 'btn-asthma',
+                    'dka_alert': 'btn-dka',
+                    'cardiac_arrhythmia': 'btn-cardiac'
+                };
+
+                Object.keys(profileButtons).forEach(p => {
+                    const btn = document.getElementById(profileButtons[p]);
+                    if (p === profileName) {
+                        btn.className = "px-3.5 py-2 rounded-xl text-xs font-bold uppercase transition bg-emerald-600 text-white shadow-lg shadow-emerald-900/30";
+                    } else {
+                        btn.className = "px-3.5 py-2 rounded-xl text-xs font-bold uppercase transition bg-slate-800 text-slate-400 hover:bg-slate-700";
+                    }
+                });
+            } catch (err) {
+                console.error("Failed to post scenario update to Python backend:", err);
+            }
+        }
+
+        // Fetch Live Telemetry Snapshot from Python API
+        async function fetchSensorDataFromPython() {
+            try {
+                const response = await fetch('http://127.0.0.1:5000/api/sensor');
+                const result = await response.json();
+                const data = result.sensor_data;
+
+                // Update Dashboard Metrics
+                document.getElementById('kpi-ecg-bpm').innerText = data.ecg_lead1_bpm;
+                document.getElementById('kpi-ecg-status').innerText = data.ecg_lead1_status;
+                document.getElementById('kpi-pef').innerText = Math.round(data.pressure_pef_lmin);
+                document.getElementById('kpi-temp').innerText = data.lip_temp_celsius.toFixed(1);
+                document.getElementById('json-display').innerText = JSON.stringify(data, null, 2);
+                document.getElementById('stream-timestamp').innerText = result.timestamp;
+
+                // Evaluate Hardware Power-Gating Logic
+                let wokenSensors = ["ECG"];
+                let powerMw = 300 + 120; // Baseline MCU + AD8232 ECG draw
+
+                const badgeAcoustic = document.getElementById('badge-acoustic');
+                const badgeSGP30 = document.getElementById('badge-sgp30');
+                const badgeMQ138 = document.getElementById('badge-mq138');
+
+                // Rule 1: Peak Flow drop (<300 L/min) wakes MAX9814 Piezo Audio
+                if (data.pressure_pef_lmin < 300) {
+                    wokenSensors.push("Acoustic");
+                    powerMw += 250;
+                    badgeAcoustic.innerText = "ACTIVE (250mW)";
+                    badgeAcoustic.className = "px-2.5 py-1 bg-amber-500/20 text-amber-400 border border-amber-500/40 rounded-lg text-[10px] font-bold uppercase pulse-glow";
+                } else {
+                    badgeAcoustic.innerText = "SLEEPING (0mW)";
+                    badgeAcoustic.className = "px-2.5 py-1 bg-slate-800 text-slate-500 rounded-lg text-[10px] font-bold uppercase";
+                }
+
+                // Rule 2: Low SpO2 (<93%) or Lip Fever (>38°C) wakes SGP30 Gas Chip
+                if (data.spo2_percent < 93 || data.lip_temp_celsius > 38.0) {
+                    wokenSensors.push("SGP30");
+                    powerMw += 150;
+                    badgeSGP30.innerText = "ACTIVE (150mW)";
+                    badgeSGP30.className = "px-2.5 py-1 bg-rose-500/20 text-rose-400 border border-rose-500/40 rounded-lg text-[10px] font-bold uppercase pulse-glow";
+                } else {
+                    badgeSGP30.innerText = "SLEEPING (0mW)";
+                    badgeSGP30.className = "px-2.5 py-1 bg-slate-800 text-slate-500 rounded-lg text-[10px] font-bold uppercase";
+                }
+
+                // Rule 3: Lip Fever (>38°C) & GSR Stress (>400 ADC) wakes MQ-138
+                if (data.lip_temp_celsius > 38.0 && data.gsr_adc_value > 400) {
+                    wokenSensors.push("MQ138");
+                    powerMw += 600;
+                    badgeMQ138.innerText = "ACTIVE (600mW)";
+                    badgeMQ138.className = "px-2.5 py-1 bg-purple-500/20 text-purple-400 border border-purple-500/40 rounded-lg text-[10px] font-bold uppercase pulse-glow";
+                } else {
+                    badgeMQ138.innerText = "SLEEPING (0mW)";
+                    badgeMQ138.className = "px-2.5 py-1 bg-slate-800 text-slate-500 rounded-lg text-[10px] font-bold uppercase";
+                }
+
+                // Compute System Power Savings %
+                const savedPct = (((2500 - powerMw) / 2500) * 100).toFixed(1);
+                document.getElementById('kpi-power-mw').innerText = powerMw;
+                document.getElementById('kpi-power-saved').innerText = savedPct + "%";
+
+                // AI Gatekeeper Clinical Diagnostics Engine
+                const diagCard = document.getElementById('diagnosis-card');
+                const kpiDiag = document.getElementById('kpi-diagnosis');
+                const kpiSub = document.getElementById('kpi-status-sub');
+
+                if (data.ecg_lead1_status.includes("Arrhythmia") || data.ecg_lead1_bpm > 130) {
+                    kpiDiag.innerText = "CARDIAC ARRHYTHMIA";
+                    kpiSub.innerText = "AD8232 Lead-I detected acute rhythm instability";
+                    diagCard.className = "glass p-4 rounded-2xl border-l-4 border-rose-500 bg-rose-950/20";
+                    kpiDiag.className = "text-lg font-black text-rose-400 mt-1.5 leading-tight";
+                } else if (wokenSensors.includes("Acoustic") && data.acoustic_wheeze_detected === 1) {
+                    kpiDiag.innerText = "ASTHMA ATTACK";
+                    kpiSub.innerText = "Acoustic stethoscope detected wheeze patterns";
+                    diagCard.className = "glass p-4 rounded-2xl border-l-4 border-amber-500 bg-amber-950/20";
+                    kpiDiag.className = "text-lg font-black text-amber-400 mt-1.5 leading-tight";
+                } else if ((wokenSensors.includes("SGP30") || wokenSensors.includes("MQ138")) && data.sgp30_acetone_ppm > 3.5) {
+                    kpiDiag.innerText = "DKA EMERGENCY";
+                    kpiSub.innerText = "SGP30/MQ-138 detected Acetone > 3.5 ppm";
+                    diagCard.className = "glass p-4 rounded-2xl border-l-4 border-purple-500 bg-purple-950/20";
+                    kpiDiag.className = "text-lg font-black text-purple-400 mt-1.5 leading-tight";
+                } else {
+                    kpiDiag.innerText = "HEALTHY";
+                    kpiSub.innerText = "Heavy acoustic & gas sensors sleeping";
+                    diagCard.className = "glass p-4 rounded-2xl border-l-4 border-emerald-500";
+                    kpiDiag.className = "text-lg font-black text-emerald-400 mt-1.5 leading-tight";
+                }
+
+                // Update Chart Stream Data
+                if (chart.data.labels.length > 15) {
+                    chart.data.labels.shift();
+                    chart.data.datasets[0].data.shift();
+                    chart.data.datasets[1].data.shift();
+                    chart.data.datasets[2].data.shift();
+                    chart.data.datasets[3].data.shift();
+                }
+                chart.data.labels.push(result.timestamp);
+                chart.data.datasets[0].data.push(data.pressure_pef_lmin);
+                chart.data.datasets[1].data.push(data.spo2_percent);
+                chart.data.datasets[2].data.push(data.ecg_lead1_bpm);
+                chart.data.datasets[3].data.push(data.lip_temp_celsius);
+                chart.update();
+
+            } catch (err) {
+                document.getElementById('json-display').innerText = "Waiting for Python API at http://127.0.0.1:5000...";
+            }
+        }
+
+        // Poll Python API every 1000ms
+        setInterval(fetchSensorDataFromPython, 1000);
+    </script>
+</body>
+</html>
